@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Mode {
+  IN_PERSON
+  ONLINE
+  BOTH
+}
+
+enum PairingStatus {
+  PENDING
+  CONFIRMED
+  EXPIRED
+  DONE
+  NO_SHOW
+}
+
+enum SubscriptionType {
+  PRO_MONTHLY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum GoalType {
+  NETWORKING
+  MENTORSHIP
+  CAREER_ADVICE
+  INDUSTRY_INSIGHTS
+  COLLABORATION
+  FRIENDSHIP
+}
+
+enum ProfessionLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+  DIRECTOR
+  VP
+  C_LEVEL
+}
+
+enum Vibe {
+  CASUAL
+  PROFESSIONAL
+  MIXED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  telegramId    BigInt   @unique
+  username      String?
+  firstName     String?
+  lastName      String?
+  languageCode  String?  @default("en")
+  isBot         Boolean  @default(false)
+  isPremium     Boolean  @default(false)
+  addedToAttachmentMenu Boolean @default(false)
+  allowsWriteToPm Boolean @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  profile       Profile?
+  subscriptions Subscription[]
+  payments      Payment[]
+  pairings1     Pairing[] @relation("User1Pairings")
+  pairings2     Pairing[] @relation("User2Pairings")
+  feedback1     PairFeedback[] @relation("FromUserFeedback")
+  feedback2     PairFeedback[] @relation("ToUserFeedback")
+  blocked1      Blocklist[] @relation("BlockerUser")
+  blocked2      Blocklist[] @relation("BlockedUser")
+  
+  @@map("users")
+}
+
+model Profile {
+  id              String         @id @default(cuid())
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  profession      String?
+  professionLevel ProfessionLevel @default(MID)
+  company         String?
+  about           String?        
+  goal1           GoalType?
+  goal2           GoalType?
+  mode            Mode           @default(BOTH)
+  cityId          String?
+  city            City?          @relation(fields: [cityId], references: [id])
+  radiusKm        Int?           @default(25)
+  timezone        String         @default("UTC")
+  frequency       String         @default("weekly")
+  vibe            Vibe           @default(MIXED)
+  
+  isPaused        Boolean        @default(false)
+  isOnboarded     Boolean        @default(false)
+  matchCount      Int            @default(0)
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  topics          UserTopic[]
+  industries      UserIndustry[]
+  availability    Availability[]
+  
+  @@map("profiles")
+}
+
+model City {
+  id          String    @id @default(cuid())
+  name        String
+  country     String
+  region      String?
+  latitude    Float
+  longitude   Float
+  timezone    String
+  population  Int?
+  
+  profiles    Profile[]
+  
+  @@unique([name, country])
+  @@map("cities")
+}
+
+model Topic {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  category  String?
+  isCustom  Boolean     @default(false)
+  
+  users     UserTopic[]
+  
+  @@map("topics")
+}
+
+model UserTopic {
+  userId    String
+  user      Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@id([userId, topicId])
+  @@map("user_topics")
+}
+
+model Industry {
+  id       String         @id @default(cuid())
+  name     String         @unique
+  category String?
+  
+  users    UserIndustry[]
+  
+  @@map("industries")
+}
+
+model UserIndustry {
+  userId     String
+  user       Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  industryId String
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
+  
+  @@id([userId, industryId])
+  @@map("user_industries")
+}
+
+model Availability {
+  id        String  @id @default(cuid())
+  userId    String
+  user      Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek Int     // 0-6, Monday = 0
+  startTime String  // HH:MM format
+  endTime   String  // HH:MM format
+  timezone  String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("availability")
+}
+
+model Blocklist {
+  id         String   @id @default(cuid())
+  blockerId  String
+  blocker    User     @relation("BlockerUser", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId  String
+  blocked    User     @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+  
+  reason     String?
+  createdAt  DateTime @default(now())
+  
+  @@unique([blockerId, blockedId])
+  @@map("blocklist")
+}
+
+model Pairing {
+  id                String        @id @default(cuid())
+  user1Id          String
+  user1            User          @relation("User1Pairings", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id          String
+  user2            User          @relation("User2Pairings", fields: [user2Id], references: [id], onDelete: Cascade)
+  
+  status           PairingStatus @default(PENDING)
+  scheduledAt      DateTime?
+  confirmedAt      DateTime?
+  completedAt      DateTime?
+  expiredAt        DateTime?
+  
+  mode             Mode
+  venue            String?
+  meetingLink      String?
+  
+  score1to2        Float         @default(0.0)
+  score2to1        Float         @default(0.0)
+  avgScore         Float         @default(0.0)
+  
+  groupChatId      BigInt?
+  reminderSentAt   DateTime?
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  feedback         PairFeedback[]
+  
+  @@unique([user1Id, user2Id])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("pairings")
+}
+
+model PairFeedback {
+  id         String   @id @default(cuid())
+  pairingId  String
+  pairing    Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+  fromUserId String
+  fromUser   User     @relation("FromUserFeedback", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  toUser     User     @relation("ToUserFeedback", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  rating     Int      // 1-5
+  tags       String[] // ["interesting", "professional", "friendly"]
+  comment    String?
+  noShow     Boolean  @default(false)
+  
+  createdAt  DateTime @default(now())
+  
+  @@unique([pairingId, fromUserId])
+  @@map("pair_feedback")
+}
+
+model Subscription {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type       SubscriptionType
+  status     String           @default("active") // active, cancelled, expired
+  startDate  DateTime         @default(now())
+  endDate    DateTime?
+  
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  
+  @@map("subscriptions")
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  telegramChargeId   String        @unique
+  providerChargeId   String?
+  
+  currency           String        @default("XTR")
+  totalAmount        Int           // in stars
+  invoicePayload     String
+  
+  status             PaymentStatus @default(PENDING)
+  
+  productType        String        // "pro_monthly", "extra_match", "reroll", "priority"
+  productDescription String
+  
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  
+  @@index([userId])
+  @@index([telegramChargeId])
+  @@map("payments")
+}
