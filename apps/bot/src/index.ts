@@ -148,7 +148,7 @@ async function gracefulShutdown() {
   
   try {
     await bot.stop();
-    await dailyMatchWorker.close();
+    if (dailyMatchWorker) await dailyMatchWorker.close();
     await shutdown();
     logger.info('Bot shut down gracefully');
     process.exit(0);

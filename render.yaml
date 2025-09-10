@@ -23,7 +23,7 @@ services:
   - type: worker
     name: random-coffee-bot
     env: node
-    buildCommand: npm install && npm run build:all
+    buildCommand: npm install && npm run build:all && npm run deploy
     startCommand: npm run start --workspace=apps/bot
     envVars:
       - key: NODE_ENV

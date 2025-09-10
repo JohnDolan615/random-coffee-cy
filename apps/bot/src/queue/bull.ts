@@ -1,16 +1,18 @@
 import { 
   matchingQueue, 
   reminderQueue, 
-  notificationQueue,
-  matchingScheduler,
-  reminderScheduler,
-  notificationScheduler 
+  notificationQueue
 } from '@random-coffee/shared';
 import { logger } from '../lib/logger.js';
 
 // Setup daily matching cron job
 export async function setupDailyMatchingCron() {
   try {
+    if (!matchingQueue) {
+      logger.warn('Matching queue not available, skipping cron setup');
+      return;
+    }
+    
     // Remove existing cron jobs
     await matchingQueue.obliterate({ force: true });
     
@@ -54,6 +56,11 @@ export async function scheduleReminder(
   type: 'initial' | '48h' | 'day_of'
 ) {
   try {
+    if (!reminderQueue) {
+      logger.warn('Reminder queue not available, skipping reminder');
+      return;
+    }
+    
     const delay = Math.max(0, scheduledAt.getTime() - Date.now());
     
     await reminderQueue.add(
@@ -80,6 +87,11 @@ export async function scheduleNotification(
   delayMs: number = 0
 ) {
   try {
+    if (!notificationQueue) {
+      logger.warn('Notification queue not available, skipping notification');
+      return;
+    }
+    
     await notificationQueue.add(
       type,
       { userId, ...data },
@@ -101,15 +113,9 @@ export async function shutdown() {
   try {
     logger.info('Shutting down queues...');
 
-    await matchingScheduler.close();
-    await reminderScheduler.close(); 
-    await notificationScheduler.close();
-
-    await matchingQueue.close();
-    await reminderQueue.close();
-    await notificationQueue.close();
-
-    await connection.quit();
+    if (matchingQueue) await matchingQueue.close();
+    if (reminderQueue) await reminderQueue.close();
+    if (notificationQueue) await notificationQueue.close();
 
     logger.info('Queues shut down gracefully');
 
@@ -118,53 +124,4 @@ export async function shutdown() {
   }
 }
 
-// Health check
-export async function getQueuesHealth() {
-  try {
-    const matchingStats = {
-      waiting: await matchingQueue.getWaiting(),
-      active: await matchingQueue.getActive(),
-      completed: await matchingQueue.getCompleted(),
-      failed: await matchingQueue.getFailed()
-    };
-
-    const reminderStats = {
-      waiting: await reminderQueue.getWaiting(),
-      active: await reminderQueue.getActive(),
-      completed: await reminderQueue.getCompleted(),
-      failed: await reminderQueue.getFailed()
-    };
-
-    const notificationStats = {
-      waiting: await notificationQueue.getWaiting(),
-      active: await notificationQueue.getActive(),
-      completed: await notificationQueue.getCompleted(),
-      failed: await notificationQueue.getFailed()
-    };
-
-    return {
-      matching: {
-        waiting: matchingStats.waiting.length,
-        active: matchingStats.active.length,
-        completed: matchingStats.completed.length,
-        failed: matchingStats.failed.length
-      },
-      reminders: {
-        waiting: reminderStats.waiting.length,
-        active: reminderStats.active.length,
-        completed: reminderStats.completed.length,
-        failed: reminderStats.failed.length
-      },
-      notifications: {
-        waiting: notificationStats.waiting.length,
-        active: notificationStats.active.length,
-        completed: notificationStats.completed.length,
-        failed: notificationStats.failed.length
-      }
-    };
-
-  } catch (error) {
-    logger.error(error, 'Error getting queue health');
-    return { error: 'Unable to get queue health' };
-  }
-}
+// Note: Queue health check is available from @random-coffee/shared package

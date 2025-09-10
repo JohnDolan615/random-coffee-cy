@@ -3,9 +3,20 @@ import IORedis from 'ioredis';
 import { runDailyMatching } from '../../services/pairing.js';
 import { logger } from '../../lib/logger.js';
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+// Create connection only if queues are available (not during build)
+const createConnection = () => {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+  return new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+};
 
-export const dailyMatchWorker = new Worker(
+const connection = createConnection();
+
+export const dailyMatchWorker = connection ? new Worker(
   'daily-matching',
   async (job: Job) => {
     const startTime = Date.now();
@@ -50,43 +61,45 @@ export const dailyMatchWorker = new Worker(
       duration: 60000, // Max 5 jobs per minute
     }
   }
-);
+) : null;
 
 // Handle job events
-dailyMatchWorker.on('completed', (job, result) => {
-  logger.info({ 
-    jobId: job.id, 
-    result 
-  }, 'Daily matching job completed');
-});
+if (dailyMatchWorker) {
+  dailyMatchWorker.on('completed', (job, result) => {
+    logger.info({ 
+      jobId: job.id, 
+      result 
+    }, 'Daily matching job completed');
+  });
 
-dailyMatchWorker.on('failed', (job, err) => {
-  logger.error({ 
-    jobId: job?.id, 
-    error: err instanceof Error ? err.message : 'Unknown error',
-    data: job?.data
-  }, 'Daily matching job failed');
-});
+  dailyMatchWorker.on('failed', (job, err) => {
+    logger.error({ 
+      jobId: job?.id, 
+      error: err instanceof Error ? err.message : 'Unknown error',
+      data: job?.data
+    }, 'Daily matching job failed');
+  });
 
-dailyMatchWorker.on('stalled', (jobId) => {
-  logger.warn({ jobId }, 'Daily matching job stalled');
-});
+  dailyMatchWorker.on('stalled', (jobId) => {
+    logger.warn({ jobId }, 'Daily matching job stalled');
+  });
 
-dailyMatchWorker.on('error', (err) => {
-  logger.error(err, 'Daily matching worker error');
-});
+  dailyMatchWorker.on('error', (err) => {
+    logger.error(err, 'Daily matching worker error');
+  });
+}
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down daily match worker...');
-  await dailyMatchWorker.close();
-  await connection.quit();
+  if (dailyMatchWorker) await dailyMatchWorker.close();
+  if (connection) await connection.quit();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   logger.info('Shutting down daily match worker...');
-  await dailyMatchWorker.close();
-  await connection.quit();
+  if (dailyMatchWorker) await dailyMatchWorker.close();
+  if (connection) await connection.quit();
   process.exit(0);
 });
