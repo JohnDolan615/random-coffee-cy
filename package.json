@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "pnpm -C apps/next dev & pnpm -C apps/bot dev",
-    "build": "pnpm -C apps/next build && pnpm -C apps/bot build",
+    "build": "pnpm -C apps/next build",
+    "build:all": "pnpm -C apps/next build && pnpm -C apps/bot build",
     "deploy": "prisma migrate deploy && prisma generate",
     "migrate": "prisma migrate dev",
     "seed": "ts-node prisma/seed.ts",

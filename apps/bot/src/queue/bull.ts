@@ -1,58 +1,12 @@
-import { Queue, Worker, QueueScheduler } from 'bullmq';
-import IORedis from 'ioredis';
+import { 
+  matchingQueue, 
+  reminderQueue, 
+  notificationQueue,
+  matchingScheduler,
+  reminderScheduler,
+  notificationScheduler 
+} from '@random-coffee/shared';
 import { logger } from '../lib/logger.js';
-
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: 3,
-  retryDelayOnFailover: 100,
-});
-
-// Daily matching queue
-export const matchingQueue = new Queue('daily-matching', { 
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 10,
-    removeOnFail: 50,
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    }
-  }
-});
-
-// Reminders queue  
-export const reminderQueue = new Queue('reminders', {
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 20,
-    removeOnFail: 50,
-    attempts: 5,
-    backoff: {
-      type: 'exponential', 
-      delay: 5000,
-    }
-  }
-});
-
-// Notifications queue
-export const notificationQueue = new Queue('notifications', {
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 50,
-    removeOnFail: 100,
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000,
-    }
-  }
-});
-
-// Queue schedulers (required for delayed jobs)
-export const matchingScheduler = new QueueScheduler('daily-matching', { connection });
-export const reminderScheduler = new QueueScheduler('reminders', { connection });
-export const notificationScheduler = new QueueScheduler('notifications', { connection });
 
 // Setup daily matching cron job
 export async function setupDailyMatchingCron() {

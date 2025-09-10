@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { validateAndParse, manualMatchSchema } from '@/lib/validators';
-import { matchingQueue } from '../../../bot/src/queue/bull';
+import { matchingQueue } from '@random-coffee/shared';
 
 export async function POST(request: NextRequest) {
   try {
