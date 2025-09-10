@@ -1,13 +1,27 @@
-import { Queue, Worker, QueueScheduler } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: 3,
-  retryDelayOnFailover: 100,
-});
+// Avoid connecting during build time
+const createConnection = () => {
+  if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
+    throw new Error('REDIS_URL is required in production');
+  }
+  
+  // Don't create connection during build
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+  
+  return new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+};
 
-// Daily matching queue
-export const matchingQueue = new Queue('daily-matching', { 
+const connection = createConnection();
+
+// Create queues conditionally
+export const matchingQueue = connection ? new Queue('daily-matching', { 
   connection,
   defaultJobOptions: {
     removeOnComplete: 10,
@@ -18,10 +32,10 @@ export const matchingQueue = new Queue('daily-matching', {
       delay: 2000,
     }
   }
-});
+}) : null;
 
 // Reminders queue  
-export const reminderQueue = new Queue('reminders', {
+export const reminderQueue = connection ? new Queue('reminders', {
   connection,
   defaultJobOptions: {
     removeOnComplete: 20,
@@ -32,10 +46,10 @@ export const reminderQueue = new Queue('reminders', {
       delay: 5000,
     }
   }
-});
+}) : null;
 
 // Notifications queue
-export const notificationQueue = new Queue('notifications', {
+export const notificationQueue = connection ? new Queue('notifications', {
   connection,
   defaultJobOptions: {
     removeOnComplete: 50,
@@ -46,16 +60,18 @@ export const notificationQueue = new Queue('notifications', {
       delay: 1000,
     }
   }
-});
+}) : null;
 
-// Queue schedulers (required for delayed jobs)
-export const matchingScheduler = new QueueScheduler('daily-matching', { connection });
-export const reminderScheduler = new QueueScheduler('reminders', { connection });
-export const notificationScheduler = new QueueScheduler('notifications', { connection });
+// Note: QueueScheduler is deprecated in BullMQ v4+
+// Delayed jobs now work automatically with Queue instances
 
 // Health check
 export async function getQueuesHealth() {
   try {
+    if (!matchingQueue || !reminderQueue || !notificationQueue) {
+      return { error: 'Queues not initialized' };
+    }
+
     const matchingStats = {
       waiting: await matchingQueue.getWaiting(),
       active: await matchingQueue.getActive(),

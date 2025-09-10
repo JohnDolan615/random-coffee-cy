@@ -4,6 +4,8 @@ import DashboardStats from '@/components/dashboard/stats';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Admin Dashboard - Random Coffee',
   description: 'Admin dashboard for Random Coffee bot management',

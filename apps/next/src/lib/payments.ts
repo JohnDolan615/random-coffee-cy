@@ -1,7 +1,7 @@
 import { prisma } from './prisma';
-import { logger } from 'pino';
+import pino from 'pino';
 
-const log = logger();
+const log = pino();
 
 export async function processRefund(paymentId: string, reason: string) {
   try {

@@ -12,6 +12,10 @@ export async function POST(request: NextRequest) {
     const { timezone } = validateAndParse(manualMatchSchema, body);
     
     // Add manual matching job to queue
+    if (!matchingQueue) {
+      throw new Error('Matching queue not available');
+    }
+    
     const job = await matchingQueue.add(
       'manual-match',
       { 
@@ -52,6 +56,10 @@ export async function GET(request: NextRequest) {
     
     const url = new URL(request.url);
     const timezone = url.searchParams.get('timezone') || 'UTC';
+    
+    if (!matchingQueue) {
+      throw new Error('Matching queue not available');
+    }
     
     const job = await matchingQueue.add(
       'manual-match',

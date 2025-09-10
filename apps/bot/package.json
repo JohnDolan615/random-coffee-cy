@@ -7,7 +7,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@random-coffee/shared": "workspace:*",
+    "@random-coffee/shared": "file:../../packages/shared",
     "@prisma/client": "^5.8.1",
     "grammy": "^1.19.2",
     "bullmq": "^4.15.4",

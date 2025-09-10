@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: random-coffee-web
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start --workspace=apps/next
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: random-coffee-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: random-coffee-redis
+          property: connectionString
+      - key: APP_URL
+        value: https://random-coffee-web.onrender.com
+    autoDeploy: false
+
+  - type: worker
+    name: random-coffee-bot
+    env: node
+    buildCommand: npm install && npm run build:all
+    startCommand: npm run start --workspace=apps/bot
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: random-coffee-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: random-coffee-redis
+          property: connectionString
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+    autoDeploy: false
+
+databases:
+  - name: random-coffee-db
+    databaseName: coffee
+    user: postgres
+
+services:
+  - type: redis
+    name: random-coffee-redis
+    ipAllowList: []
