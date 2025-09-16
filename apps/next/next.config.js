@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable transpiling of local packages
@@ -44,6 +46,12 @@ const nextConfig = {
         tls: false,
       };
     }
+
+    // Ensure @ alias is properly resolved
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, './src'),
+    };
 
     return config;
   },
