@@ -8,8 +8,8 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/next & npm run dev --workspace=apps/bot",
-    "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/next",
-    "build:all": "npm run build --workspace=packages/shared && npm run build --workspace=apps/next && npm run build --workspace=apps/bot",
+    "build": "node build-shared.js && npm run build --workspace=apps/next",
+    "build:all": "node build-shared.js && npm run build --workspace=apps/next && npm run build --workspace=apps/bot",
     "build:shared": "npm run build --workspace=packages/shared",
     "deploy": "prisma migrate deploy && prisma generate",
     "migrate": "prisma migrate dev",
