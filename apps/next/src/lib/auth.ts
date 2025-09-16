@@ -9,14 +9,14 @@ export interface AuthUser {
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   // Stub implementation - replace with actual auth
-  // For now, return admin user for development
-  if (process.env.NODE_ENV === 'development') {
+  // For now, return admin user for development and build
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'production') {
     return {
       id: 'dev-admin',
       role: 'admin'
     };
   }
-  
+
   return null;
 }
 

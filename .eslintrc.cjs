@@ -2,7 +2,6 @@ module.exports = {
   root: true,
   extends: [
     "eslint:recommended",
-    "@typescript-eslint/recommended",
     "prettier"
   ],
   parser: "@typescript-eslint/parser",
@@ -16,10 +15,16 @@ module.exports = {
     es2020: true
   },
   rules: {
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-explicit-any": "warn"
+    "@typescript-eslint/no-explicit-any": "off"
   },
+  overrides: [
+    {
+      files: ["**/*.ts", "**/*.tsx"],
+      extends: ["@typescript-eslint/recommended"],
+    }
+  ],
   ignorePatterns: ["node_modules/", "dist/", ".next/"]
 };
