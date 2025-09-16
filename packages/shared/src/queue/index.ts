@@ -1,6 +1,14 @@
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 
+// Type declarations for Node.js globals
+declare var process: {
+  env: { [key: string]: string | undefined };
+};
+declare var console: {
+  error: (...args: any[]) => void;
+};
+
 // Avoid connecting during build time
 const createConnection = () => {
   if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
