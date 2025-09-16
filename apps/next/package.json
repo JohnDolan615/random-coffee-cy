@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "node build.js",
+    "build:next-only": "next build",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },

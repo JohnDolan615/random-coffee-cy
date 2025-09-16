@@ -2,8 +2,9 @@ services:
   - type: web
     name: random-coffee-web
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm run start --workspace=apps/next
+    rootDir: .
+    buildCommand: node build.js
+    startCommand: cd apps/next && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,12 +19,16 @@ services:
           property: connectionString
       - key: APP_URL
         value: https://random-coffee-web.onrender.com
+      - key: BOT_TOKEN
+        value: dummy-token-for-build
+      - key: WEBHOOK_SECRET
+        value: dummy-secret-for-build
     autoDeploy: false
 
   - type: worker
     name: random-coffee-bot
     env: node
-    buildCommand: npm install && npm run build:all && npm run deploy
+    buildCommand: npm ci && npm run build:all && npm run deploy
     startCommand: npm run start --workspace=apps/bot
     envVars:
       - key: NODE_ENV
@@ -43,12 +48,11 @@ services:
         sync: false
     autoDeploy: false
 
+  - type: redis
+    name: random-coffee-redis
+    ipAllowList: []
+
 databases:
   - name: random-coffee-db
     databaseName: coffee
     user: postgres
-
-services:
-  - type: redis
-    name: random-coffee-redis
-    ipAllowList: []

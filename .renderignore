@@ -1,0 +1,9 @@
+# Files to ignore during Render build
+.git
+.env.local
+.env.example
+*.log
+coverage/
+.nyc_output/
+tests/
+docs/
