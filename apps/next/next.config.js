@@ -29,6 +29,8 @@ const nextConfig = {
     // Allow production builds to successfully complete even if ESLint has errors
     ignoreDuringBuilds: true,
   },
+  // Handle dynamic pages that can't be statically generated
+  output: 'standalone',
   webpack: (config, { isServer }) => {
     // Fix for workspace packages
     config.resolve.symlinks = false;
