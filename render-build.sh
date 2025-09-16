@@ -41,6 +41,6 @@ npx prisma generate
 
 # Build Next.js app using root command
 echo "🏗️  Building Next.js application..."
-npm run build --workspace=apps/next
+npm run build:next-only --workspace=apps/next
 
 echo "✅ Build completed successfully!"

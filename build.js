@@ -61,18 +61,18 @@ try {
   // Build Next.js app
   console.log('🏗️  Building Next.js application...');
   const nextAppDir = path.join(projectRoot, 'apps', 'next');
-  console.log('Changing to Next.js directory:', nextAppDir);
+  console.log('Next.js directory:', nextAppDir);
 
   if (!fs.existsSync(nextAppDir)) {
     throw new Error(`Next.js app directory not found: ${nextAppDir}`);
   }
 
-  process.chdir(nextAppDir);
+  // Stay in project root and use workspace command
   console.log('Current directory:', process.cwd());
-  console.log('Running: npx next build');
+  console.log('Running: npm run build:next-only --workspace=apps/next');
 
   try {
-    execSync('npx next build', { stdio: 'inherit' });
+    execSync('npm run build:next-only --workspace=apps/next', { stdio: 'inherit' });
   } catch (error) {
     console.error('Next.js build failed with error:', error.message);
     console.error('Exit code:', error.status);
