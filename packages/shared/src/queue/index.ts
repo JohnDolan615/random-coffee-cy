@@ -8,67 +8,104 @@ declare var process: {
 declare var console: {
   error: (...args: any[]) => void;
 };
+declare var window: any;
 
 // Avoid connecting during build time
 const createConnection = () => {
+  // Don't create connection during build or if we're in a browser/edge environment
+  if (process.env.NEXT_PHASE === 'phase-production-build' ||
+      typeof window !== 'undefined' ||
+      process.env.NEXT_RUNTIME === 'edge') {
+    return null;
+  }
+
   if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
     throw new Error('REDIS_URL is required in production');
   }
-  
-  // Don't create connection during build
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return null;
-  }
-  
+
   return new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
   });
 };
 
-const connection = createConnection();
+let connection: IORedis | null = null;
 
-// Create queues conditionally
-export const matchingQueue = connection ? new Queue('daily-matching', { 
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 10,
-    removeOnFail: 50,
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    }
+// Lazy initialization
+const getConnection = () => {
+  if (connection === undefined) {
+    connection = createConnection();
   }
-}) : null;
+  return connection;
+};
 
-// Reminders queue  
-export const reminderQueue = connection ? new Queue('reminders', {
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 20,
-    removeOnFail: 50,
-    attempts: 5,
-    backoff: {
-      type: 'exponential', 
-      delay: 5000,
-    }
-  }
-}) : null;
+// Lazy queue initialization
+let _matchingQueue: Queue | null = null;
+let _reminderQueue: Queue | null = null;
+let _notificationQueue: Queue | null = null;
 
-// Notifications queue
-export const notificationQueue = connection ? new Queue('notifications', {
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 50,
-    removeOnFail: 100,
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000,
+export const matchingQueue = {
+  get instance() {
+    if (!_matchingQueue) {
+      const conn = getConnection();
+      _matchingQueue = conn ? new Queue('daily-matching', {
+        connection: conn,
+        defaultJobOptions: {
+          removeOnComplete: 10,
+          removeOnFail: 50,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          }
+        }
+      }) : null;
     }
+    return _matchingQueue;
   }
-}) : null;
+};
+
+export const reminderQueue = {
+  get instance() {
+    if (!_reminderQueue) {
+      const conn = getConnection();
+      _reminderQueue = conn ? new Queue('reminders', {
+        connection: conn,
+        defaultJobOptions: {
+          removeOnComplete: 20,
+          removeOnFail: 50,
+          attempts: 5,
+          backoff: {
+            type: 'exponential',
+            delay: 5000,
+          }
+        }
+      }) : null;
+    }
+    return _reminderQueue;
+  }
+};
+
+export const notificationQueue = {
+  get instance() {
+    if (!_notificationQueue) {
+      const conn = getConnection();
+      _notificationQueue = conn ? new Queue('notifications', {
+        connection: conn,
+        defaultJobOptions: {
+          removeOnComplete: 50,
+          removeOnFail: 100,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          }
+        }
+      }) : null;
+    }
+    return _notificationQueue;
+  }
+};
 
 // Note: QueueScheduler is deprecated in BullMQ v4+
 // Delayed jobs now work automatically with Queue instances
@@ -76,29 +113,33 @@ export const notificationQueue = connection ? new Queue('notifications', {
 // Health check
 export async function getQueuesHealth() {
   try {
-    if (!matchingQueue || !reminderQueue || !notificationQueue) {
+    const matching = matchingQueue.instance;
+    const reminder = reminderQueue.instance;
+    const notification = notificationQueue.instance;
+
+    if (!matching || !reminder || !notification) {
       return { error: 'Queues not initialized' };
     }
 
     const matchingStats = {
-      waiting: await matchingQueue.getWaiting(),
-      active: await matchingQueue.getActive(),
-      completed: await matchingQueue.getCompleted(),
-      failed: await matchingQueue.getFailed()
+      waiting: await matching.getWaiting(),
+      active: await matching.getActive(),
+      completed: await matching.getCompleted(),
+      failed: await matching.getFailed()
     };
 
     const reminderStats = {
-      waiting: await reminderQueue.getWaiting(),
-      active: await reminderQueue.getActive(),
-      completed: await reminderQueue.getCompleted(),
-      failed: await reminderQueue.getFailed()
+      waiting: await reminder.getWaiting(),
+      active: await reminder.getActive(),
+      completed: await reminder.getCompleted(),
+      failed: await reminder.getFailed()
     };
 
     const notificationStats = {
-      waiting: await notificationQueue.getWaiting(),
-      active: await notificationQueue.getActive(),
-      completed: await notificationQueue.getCompleted(),
-      failed: await notificationQueue.getFailed()
+      waiting: await notification.getWaiting(),
+      active: await notification.getActive(),
+      completed: await notification.getCompleted(),
+      failed: await notification.getFailed()
     };
 
     return {
