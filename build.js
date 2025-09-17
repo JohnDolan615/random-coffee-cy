@@ -39,9 +39,9 @@ try {
     process.chdir(projectRoot);
   }
 
-  // Install dependencies for all workspaces
+  // Install dependencies for root and all workspaces
   console.log('📦 Installing dependencies...');
-  execSync('npm ci --workspaces', { stdio: 'inherit' });
+  execSync('npm install', { stdio: 'inherit' });
 
   // Build shared package
   console.log('🔧 Building shared package...');
